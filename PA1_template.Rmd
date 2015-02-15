@@ -7,19 +7,70 @@ output:
 
 
 ## Loading and preprocessing the data
+```{r, echo=TRUE}
+#Load libraries used by the project
+library(plyr)
+library(ggplot2)
+library(lubridate)
 
+#Load activity data
+stepsData <- read.csv("activity.csv",header=TRUE)
+```
 
 
 ## What is mean total number of steps taken per day?
+```{r, echo=TRUE}
+#Calculate the total number of steps per day
+stepsperday <- ddply(stepsData, c("date"),summarise,Total= sum(steps))
 
+#Make histogram of the total number of steps taken each day
+qplot(stepsperday$date,stepsperday$Total, geom="bar", stat="identity")
+
+#Calculate and report the mean and median of the total number of steps per day
+ddply(stepsData, c("date"),summarise, Mean= mean(steps),Median = median(steps))
+```
 
 
 ## What is the average daily activity pattern?
-
-
+```{r, echo=TRUE}
+#Get mean steps ignoring NA values
+tepsperinterval <- ddply(stepsData, c("interval"),summarise, mean= mean(steps,na.rm=TRUE))
+#Time Series of 5 minute interval and the avg number of steps  across all days
+ggplot(stepsperinterval, aes(x=interval, y=mean)) + geom_line()
+ggplot(stepsperinterval, aes(x=interval, y=mean)) + geom_line()+ geom_text(data=stepsperinterval[which.max(stepsperinterval$mean),], label=paste("Steps",stepsperinterval[which.max(stepsperinterval$mean),2],"Interval",stepsperinterval[which.max(stepsperinterval$mean),1]))
+#Interval 835 has maxinum number of steps 206.1698
+```
 
 ## Imputing missing values
-
-
+```{r, echo=TRUE}
+#Count na values 230
+sum(is.na(stepsData$steps))
+#Get round mean steps interval
+roundstepsinterval <- round(ddply(stepsData, c("interval"),summarise, mean= mean(steps,na.rm=TRUE)),0)
+#Copy original data with NA vales
+tmp <- stepsData
+#Replace with mean for the 5-minte interval the NA values
+tmp$steps <- ifelse(is.na(tmp$steps),roundstepsinterval$mean[match(roundstepsinterval$interval,tmp$interval)],tmp$steps)
+#Calculate the total number of steps per day no NA
+stepsperdayfixed <- ddply(tmp, c("date"),summarise,Total= sum(steps))
+#Make histogram of the total number of steps taken each day - no NA
+qplot(stepsperdayfixed$date,stepsperdayfixed$Total, geom="bar", stat="identity")
+#Calculate and report the mean and median of the total number of steps per day nio NA values
+ddply(tmp, c("date"),summarise, Mean= mean(steps),Median = median(steps))
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r,echo=TRUE}
+#Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+tmp$daytype <- ifelse(wday(as.Date(tmp$date))>=2 & wday(as.Date(tmp$date))<=6,'weekday','weekend')
+
+weekday <- subset(tmp, daytype == "weekday", select=c(steps,interval))
+weekend <- subset(tmp, daytype == "weekend", select=c(steps,interval))
+
+meanweekday <- round(ddply(weekday, c("interval"),summarise, mean= mean(steps)),0)
+meanweekend <- round(ddply(weekend, c("interval"),summarise, mean= mean(steps)),0)
+
+par(mfrow=c(2,1))
+plot(meanweekday$mean ~ meanweekday$interval, type="l", xlab="interval",ylab="steps",col="blue")
+plot(meanweekend$mean ~ meanweekend$interval, type="l", xlab="interval",ylab="steps",col="blue")
+```
