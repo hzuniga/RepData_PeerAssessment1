@@ -13,8 +13,23 @@ output:
 library(plyr)
 library(ggplot2)
 library(lubridate)
+```
 
-#Load activity data
+```
+## Warning: package 'lubridate' was built under R version 3.1.2
+```
+
+```
+## 
+## Attaching package: 'lubridate'
+## 
+## The following object is masked from 'package:plyr':
+## 
+##     here
+```
+
+```r
+#Load activity data from file
 stepsData <- read.csv("activity.csv",header=TRUE)
 ```
 
@@ -22,15 +37,15 @@ stepsData <- read.csv("activity.csv",header=TRUE)
 ## What is mean total number of steps taken per day?
 
 ```r
-#Calculate the total number of steps per day
+#Calculate the total number of steps taken per day
 stepsperday <- ddply(stepsData, c("date"),summarise,Total= sum(steps))
 
 #Make histogram of the total number of steps taken each day
-qplot(stepsperday$date,stepsperday$Total, geom="bar", stat="identity")
+ggplot(stepsperday, aes(x=Total)) + geom_histogram() + scale_x_continuous(limits=c(0,23000),breaks=c(0,2000,4000,6000,8000,10000,12000,14000,16000,18000,20000,22000))
 ```
 
 ```
-## Warning: Removed 8 rows containing missing values (position_stack).
+## stat_bin: binwidth defaulted to range/30. Use 'binwidth = x' to adjust this.
 ```
 
 ![plot of chunk unnamed-chunk-2](figure/unnamed-chunk-2-1.png) 
@@ -111,6 +126,7 @@ ddply(stepsData, c("date"),summarise, Mean= mean(steps),Median = median(steps))
 ```r
 #Get mean steps ignoring NA values
 tepsperinterval <- ddply(stepsData, c("interval"),summarise, mean= mean(steps,na.rm=TRUE))
+
 #Time Series of 5 minute interval and the avg number of steps  across all days
 ggplot(stepsperinterval, aes(x=interval, y=mean)) + geom_line()
 ```
@@ -130,30 +146,39 @@ ggplot(stepsperinterval, aes(x=interval, y=mean)) + geom_line()+ geom_text(data=
 ## Imputing missing values
 
 ```r
-#Count na values 230
-sum(is.na(stepsData$steps))
+natot <- sum(is.na(stepsData$steps))
 ```
+Total Count of NA values in data set is 2304
 
-```
-## [1] 2304
-```
 
 ```r
 #Get round mean steps interval
 roundstepsinterval <- round(ddply(stepsData, c("interval"),summarise, mean= mean(steps,na.rm=TRUE)),0)
+
 #Copy original data with NA vales
 tmp <- stepsData
+
 #Replace with mean for the 5-minte interval the NA values
 tmp$steps <- ifelse(is.na(tmp$steps),roundstepsinterval$mean[match(roundstepsinterval$interval,tmp$interval)],tmp$steps)
+
 #Calculate the total number of steps per day no NA
 stepsperdayfixed <- ddply(tmp, c("date"),summarise,Total= sum(steps))
+
 #Make histogram of the total number of steps taken each day - no NA
-qplot(stepsperdayfixed$date,stepsperdayfixed$Total, geom="bar", stat="identity")
+ggplot(stepsperdayfixed, aes(x=Total)) + geom_histogram() + scale_x_continuous(limits=c(0,23000),breaks=c(0,2000,4000,6000,8000,10000,12000,14000,16000,18000,20000,22000))
 ```
 
-![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4-1.png) 
+```
+## stat_bin: binwidth defaulted to range/30. Use 'binwidth = x' to adjust this.
+```
+
+![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png) 
 
 ```r
+#At least on this graph type there is not a significant view when the missing
+#values are calculated with a specific strategy; maybe a different strategy
+#could affect the graph
+
 #Calculate and report the mean and median of the total number of steps per day nio NA values
 ddply(tmp, c("date"),summarise, Mean= mean(steps),Median = median(steps))
 ```
@@ -235,9 +260,13 @@ weekend <- subset(tmp, daytype == "weekend", select=c(steps,interval))
 meanweekday <- round(ddply(weekday, c("interval"),summarise, mean= mean(steps)),0)
 meanweekend <- round(ddply(weekend, c("interval"),summarise, mean= mean(steps)),0)
 
-par(mfrow=c(2,1))
-plot(meanweekday$mean ~ meanweekday$interval, type="l", xlab="interval",ylab="steps",col="blue")
-plot(meanweekend$mean ~ meanweekend$interval, type="l", xlab="interval",ylab="steps",col="blue")
+#Create a panel plot time series of 5-minute interval for Weekdays and Weekends
+par(mfrow=c(2,1),oma=c(4,4,0,0), mar=c(2,2,1,2))
+plot(meanweekend$mean ~ meanweekend$interval, type="l", ylab="", xlab="", main="weekend",col="blue", xaxt='n', yaxt='n')
+axis(4)
+plot(meanweekday$mean ~ meanweekday$interval, type="l",ylab="", xlab="", main="weekday",col="blue")
+mtext("Interval",side=1,line=2, outer=TRUE)
+mtext("Number of steps",side=2,line=1,outer=TRUE)
 ```
 
-![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png) 
+![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6-1.png) 
